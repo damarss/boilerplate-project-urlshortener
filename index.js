@@ -39,38 +39,39 @@ app.get("/api/hello", function (req, res) {
 
 app.get("/api/shorturl/:shortURL", async (req, res) => {
   const { shortURL } = req.params;
+  if (isNaN(shortURL)) {
+    res.json({ error: "Wrong format" });
+  }
   const url = await URL.findOne({ shortURL: shortURL });
   if (url) {
     res.redirect(url?.originalURL);
   } else {
-    res.json({ error: "Wrong format" });
+    res.json({ error: "No short URL found for the given input"});
   }
 });
 
 app.post("/api/shorturl", async (req, res) => {
   const { url } = req.body;
-  if (!validator.isUri(url)) {
-    res.status(401).json({
-      error: "Invalid URL",
-    });
-  } else {
-    try {
-      const existed = await URL.findOne({ originalURL: url });
-      let count = await URL.count();
-      if (existed) {
-        res.json(existed);
-      } else {
-        const newURL = new URL({
-          originalURL: url,
-          shortURL: count + 1,
-        });
-        await newURL.save();
-        res.json(newURL);
-      }
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ error: "Server error" });
+  const httpRegex = /^(http|https)(:\/\/)/;
+  if (!httpRegex.test(url)) {
+    return res.json({ error: 'invalid url' })
+  }
+  try {
+    const existed = await URL.findOne({ originalURL: url });
+    let count = await URL.count();
+    if (existed) {
+      res.json({original_url: existed.originalURL, short_url: existed.shortURL});
+    } else {
+      const newURL = new URL({
+        originalURL: url,
+        shortURL: count + 1,
+      });
+      await newURL.save();
+      res.json({original_url: newURL.originalURL, short_url: newURL.shortURL});
     }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Server error" });
   }
 });
 
