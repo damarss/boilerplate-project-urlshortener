@@ -2,11 +2,8 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const app = express();
-const dns = require("dns");
-const shortId = require("shortid");
 const mongoose = require("mongoose");
 const validator = require("valid-url");
-const { Schema } = mongoose;
 
 try {
   mongoose.connect(process.env["MONGO_URI"]);
@@ -17,7 +14,7 @@ try {
 
 const urlSchema = mongoose.Schema({
   originalURL: { type: String, required: true },
-  shortURL: { type: String, required: true },
+  shortURL: { type: Number, required: true },
 });
 
 const URL = mongoose.model("URL", urlSchema);
@@ -59,12 +56,13 @@ app.post("/api/shorturl", async (req, res) => {
   } else {
     try {
       const existed = await URL.findOne({ originalURL: url });
+      let count = await URL.count();
       if (existed) {
         res.json(existed);
       } else {
         const newURL = new URL({
           originalURL: url,
-          shortURL: shortId.generate(),
+          shortURL: count + 1,
         });
         await newURL.save();
         res.json(newURL);
